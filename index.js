@@ -12,7 +12,7 @@ const app = express();
 app.use(express.json());
 const allowedOrigins = [
     "http://localhost:5173",             // for local dev
-    "https://enchanting-paprenjak-aa52b4.netlify.app"    // Netlify frontend URL
+    "https://chef-customer.netlify.app"    // Netlify frontend URL
 ];
 
 app.use(
