@@ -4,6 +4,7 @@ require("dotenv").config()
 const router = require('./routers/router')
 const dbConnection = require('./DbConnevtion/db');
 const path = require('path');
+const mongoose = require('mongoose');
 
 
 
@@ -24,7 +25,9 @@ app.use(
     })
 );
 
-dbConnection();
+// dbConnection();
+
+// have connection problem with mongo db check if the ip address is added or delete db user and create new user
 
 app.use("/api/v1.0", router);
 
@@ -39,8 +42,11 @@ if (process.env.NODE_ENV === "production") {
 }
 
 
-const port = process.env.PORT || 5000
+const startServer = async () => {
+  await dbConnection();
+// mongoose.connect("mongodb+srv://chefdbuser:chefdbuser@cluster0.2vhygf3.mongodb.net/?appName=Cluster0")
+  const port = process.env.PORT || 5000;
+  app.listen(port, () => console.log(`✅ Server running on port ${port}`));
+};
 
-app.listen(port, () => {
-    console.log(`server running on port ${port}`);
-})
+startServer();

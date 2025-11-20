@@ -1,9 +1,8 @@
 const User = require('../models/userSchema')
 const bcrypt = require('bcrypt');
-const {createJwtToken} = require('../utility/createJwtToken')
+const { createJwtToken } = require('../utility/createJwtToken')
 
 const register = async (req, res) => {
-
     try {
         const { userName, email, password, role, contact } = req.body
         if (!userName || !email || !password || !role || !contact) {
@@ -26,7 +25,6 @@ const register = async (req, res) => {
             data: savedUser,
         });
     } catch (err) {
-        console.log(err)
         return res.status(500).json({ status: "failed", message: "internal server error" });
     }
 }
@@ -42,38 +40,39 @@ const login = async (req, res) => {
         const comparedPassword = await bcrypt.compare(password, existUser.password);
 
         if (comparedPassword) {
+            if (role === existUser.role) {
+                const token = await createJwtToken({
+                    userName: existUser.userName,
+                    email: existUser.email,
+                    password: existUser.password,
+                    role: existUser.role,
+                    contact: existUser.contact
+                });
+                res.cookie("token", token,
+                    {
+                        httpOnly: true,       // ❌ Not accessible via JS
+                        // secure: process.env.NODE_ENV === "production", // ✅ Only over HTTPS in production
+                        sameSite: "strict",   // ✅ CSRF protection
+                        maxAge: 60 * 60 * 1000 // 1 hour
+                    })
 
-            const token = await createJwtToken({
-                userName:existUser.userName,
-                email: existUser.email,
-                password: existUser.password,
-                role: existUser.role,
-                contact: existUser.contact
-            });
-            console.log("token:",token)
-            res.cookie("token", token,
-                {
-                    httpOnly: true,       // ❌ Not accessible via JS
-                    // secure: process.env.NODE_ENV === "production", // ✅ Only over HTTPS in production
-                    sameSite: "strict",   // ✅ CSRF protection
-                    maxAge: 60 * 60 * 1000 // 1 hour
-                })
 
-
-            return res.status(200).json(
-                {
-                    status: "success",
-                    message: "User login successfully",
-                    data: existUser,
-                    token: token
-                }
-            )
+                return res.status(200).json(
+                    {
+                        status: "success",
+                        message: "User login successfully",
+                        data: existUser,
+                        token: token
+                    }
+                )
+            } else {
+                return res.status(403).json({ status: "failed", message: "insufficient permissions" })
+            }
         } else {
             return res.status(401).json({ status: "failed", message: "Invalid password" })
         }
 
     } catch (err) {
-        console.log(err)
         return res.status(500).json({ status: "failed", message: "internal server error" });
     }
 }
