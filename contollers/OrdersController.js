@@ -53,10 +53,81 @@ const getAllOrders = async (req, res) => {
     }
 }
 
+// const getOrdersForChef = async (req, res) => {
+//     try {
+//         const orders = await Orders.aggregate([
+//             // Convert customerId to ObjectId for lookup
+//             {
+//                 $addFields: {
+//                     customerObjId: { $toObjectId: "$customerId" }
+//                 }
+//             },
+//             // Join with users collection
+//             {
+//                 $lookup: {
+//                     from: "users",
+//                     localField: "customerObjId",
+//                     foreignField: "_id",
+//                     as: "user"
+//                 }
+//             },
+//             { $unwind: "$user" },
+//             // Compute order status based on item statuses
+//             {
+//                 $addFields: {
+//                     status: {
+//                         $switch: {
+//                             branches: [
+//                                 // If any item is not accepted
+//                                 {
+//                                     case: { $gt: [{ $size: { $filter: { input: "$items", cond: { $eq: ["$$this.makingStatus", "not accepted"] } } } }, 0] },
+//                                     then: "not accepted"
+//                                 },
+//                                 // If any item is accepted or cooking
+//                                 {
+//                                     case: { $gt: [{ $size: { $filter: { input: "$items", cond: { $in: ["$$this.makingStatus", ["accepted", "cooking"]] } } } }, 0] },
+//                                     then: "cooking"
+//                                 },
+//                                 // If all items are completed
+//                                 {
+//                                     case: { $eq: [{ $size: "$items" }, { $size: { $filter: { input: "$items", cond: { $eq: ["$$this.makingStatus", "completed"] } } } }] },
+//                                     then: "completed"
+//                                 }
+//                             ],
+//                             default: "pending"
+//                         }
+//                     }
+//                 }
+//             },
+//             {
+//                 $project: {
+//                     _id: 1,
+//                     orderId: "$_id",
+//                     userName: "$user.userName",
+//                     status: 1,
+//                     totalAmount: 1,
+//                     items: 1
+//                 }
+//             }
+//         ]);
+
+//         return res.status(200).json({ status: "success", orders });
+//     } catch (e) {
+//         return res.status(500).json({ status: "failed", message: e.message });
+//     }
+// };
+
+
 const getOrdersForChef = async (req, res) => {
     try {
-        const orders = await Orders.aggregate([
-            // Convert customerId to ObjectId for lookup
+        // 📌 Get pagination params from query
+        const page = parseInt(req.body.currentPage) || 1;
+        const limit = parseInt(req.body.itemsPerPage) || 10;
+
+        const skip = (page - 1) * limit;
+
+        const pipeline = [
+            // Convert customerId to ObjectId
             {
                 $addFields: {
                     customerObjId: { $toObjectId: "$customerId" }
@@ -72,25 +143,67 @@ const getOrdersForChef = async (req, res) => {
                 }
             },
             { $unwind: "$user" },
-            // Compute order status based on item statuses
+            // Compute order status
             {
                 $addFields: {
                     status: {
                         $switch: {
                             branches: [
-                                // If any item is not accepted
                                 {
-                                    case: { $gt: [{ $size: { $filter: { input: "$items", cond: { $eq: ["$$this.makingStatus", "not accepted"] } } } }, 0] },
+                                    case: {
+                                        $gt: [
+                                            {
+                                                $size: {
+                                                    $filter: {
+                                                        input: "$items",
+                                                        cond: {
+                                                            $eq: ["$$this.makingStatus", "not accepted"]
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            0
+                                        ]
+                                    },
                                     then: "not accepted"
                                 },
-                                // If any item is accepted or cooking
                                 {
-                                    case: { $gt: [{ $size: { $filter: { input: "$items", cond: { $in: ["$$this.makingStatus", ["accepted", "cooking"]] } } } }, 0] },
+                                    case: {
+                                        $gt: [
+                                            {
+                                                $size: {
+                                                    $filter: {
+                                                        input: "$items",
+                                                        cond: {
+                                                            $in: [
+                                                                "$$this.makingStatus",
+                                                                ["accepted", "cooking"]
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            0
+                                        ]
+                                    },
                                     then: "cooking"
                                 },
-                                // If all items are completed
                                 {
-                                    case: { $eq: [{ $size: "$items" }, { $size: { $filter: { input: "$items", cond: { $eq: ["$$this.makingStatus", "completed"] } } } }] },
+                                    case: {
+                                        $eq: [
+                                            { $size: "$items" },
+                                            {
+                                                $size: {
+                                                    $filter: {
+                                                        input: "$items",
+                                                        cond: {
+                                                            $eq: ["$$this.makingStatus", "completed"]
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
                                     then: "completed"
                                 }
                             ],
@@ -99,21 +212,64 @@ const getOrdersForChef = async (req, res) => {
                     }
                 }
             },
+
+            // Remove completed orders
             {
-                $project: {
-                    _id: 1,
-                    orderId: "$_id",
-                    userName: "$user.userName",
-                    status: 1,
-                    totalAmount: 1,
-                    items: 1
+                $match: {
+                    status: { $ne: "completed" }
+                }
+            },
+
+            // Sort latest orders first
+            {
+                $sort: { _id: -1 }
+            },
+
+            // Pagination
+            {
+                $facet: {
+                    data: [
+                        { $skip: skip },
+                        { $limit: limit },
+                        {
+                            $project: {
+                                _id: 1,
+                                orderId: "$_id",
+                                userName: "$user.userName",
+                                status: 1,
+                                totalAmount: 1,
+                                items: 1
+                            }
+                        }
+                    ],
+                    totalCount: [
+                        { $count: "count" }
+                    ]
                 }
             }
-        ]);
+        ];
 
-        return res.status(200).json({ status: "success", orders });
+        const result = await Orders.aggregate(pipeline);
+
+        const orders = result[0].data;
+        const total = result[0].totalCount[0]?.count || 0;
+
+        return res.status(200).json({
+            status: "success",
+            orders,
+            pagination: {
+                total,
+                currentPage: page,
+                itemsPerPage: limit,
+                totalPages: Math.ceil(total / limit)
+            }
+        });
+
     } catch (e) {
-        return res.status(500).json({ status: "failed", message: e.message });
+        return res.status(500).json({
+            status: "failed",
+            message: e.message
+        });
     }
 };
 

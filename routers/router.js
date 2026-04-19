@@ -57,9 +57,9 @@ router.post("/payment/create", createRazorpayOrder);
 router.post("/payment/verify", verifyPaymentAndCreateOrder);
 
 //Orders
-router.post("/orders", postOrders)
+router.post("/order", postOrders)
 router.get("/orders/:id", getAllOrders);
-router.get("/orders", getOrdersForChef);
+router.post("/orders", getOrdersForChef);
 router.post("/orders/:orderId/:itemId", updateOrderItemStatus);
 
 // delivery
