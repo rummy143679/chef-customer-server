@@ -12,8 +12,8 @@ const app = express();
 
 app.use(express.json());
 const allowedOrigins = [
-    "http://localhost:5173",             // for local dev
-    "https://chef-customer.netlify.app",    // Netlify frontend URL
+    "http://localhost:5173", // for local dev
+    "https://chef-customer.netlify.app", // Netlify frontend URL
     "http://localhost:4173"
 ];
 
@@ -43,11 +43,12 @@ if (process.env.NODE_ENV === "production") {
 }
 
 
-const startServer = async () => {
-  await dbConnection();
-// mongoose.connect("mongodb+srv://chefdbuser:chefdbuser@cluster0.2vhygf3.mongodb.net/?appName=Cluster0")
-  const port = process.env.PORT || 5000;
-  app.listen(port, () => console.log(`✅ Server running on port ${port}`));
-};
+// const startServer = async() => {
+//     await dbConnection();
+//     // mongoose.connect("mongodb+srv://chefdbuser:chefdbuser@cluster0.2vhygf3.mongodb.net/?appName=Cluster0")
+//     const port = process.env.PORT || 5000;
+//     app.listen(port, () => console.log(`✅ Server running on port ${port}`));
+// };
 
-startServer();
+// startServer();
+module.exports = app;

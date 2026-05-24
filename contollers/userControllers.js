@@ -2,7 +2,7 @@ const User = require('../models/userSchema')
 const bcrypt = require('bcrypt');
 const { createJwtToken } = require('../utility/createJwtToken')
 
-const register = async (req, res) => {
+const register = async(req, res) => {
     try {
         const { userName, email, password, role, contact } = req.body
         if (!userName || !email || !password || !role || !contact) {
@@ -15,7 +15,11 @@ const register = async (req, res) => {
         }
         const hashPassword = await bcrypt.hashSync(password, 10);
         const user = new User({
-            userName, email, password: hashPassword, role, contact
+            userName,
+            email,
+            password: hashPassword,
+            role,
+            contact
         });
 
         const savedUser = await user.save();
@@ -29,7 +33,7 @@ const register = async (req, res) => {
     }
 }
 
-const login = async (req, res) => {
+const login = async(req, res) => {
     try {
         const { email, password, role } = req.body
         const existUser = await User.findOne({ email });
@@ -48,23 +52,20 @@ const login = async (req, res) => {
                     role: existUser.role,
                     contact: existUser.contact
                 });
-                res.cookie("token", token,
-                    {
-                        httpOnly: true,       // ❌ Not accessible via JS
-                        // secure: process.env.NODE_ENV === "production", // ✅ Only over HTTPS in production
-                        sameSite: "strict",   // ✅ CSRF protection
-                        maxAge: 60 * 60 * 1000 // 1 hour
-                    })
+                res.cookie("token", token, {
+                    httpOnly: true, // ❌ Not accessible via JS
+                    // secure: process.env.NODE_ENV === "production", // ✅ Only over HTTPS in production
+                    sameSite: "strict", // ✅ CSRF protection
+                    maxAge: 60 * 60 * 1000 // 1 hour
+                })
 
 
-                return res.status(200).json(
-                    {
-                        status: "success",
-                        message: "User login successfully",
-                        data: existUser,
-                        token: token
-                    }
-                )
+                return res.status(200).json({
+                    status: "success",
+                    message: "User login successfully",
+                    data: existUser,
+                    token: token
+                })
             } else {
                 return res.status(403).json({ status: "failed", message: "insufficient permissions" })
             }
