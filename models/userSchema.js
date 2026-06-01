@@ -19,13 +19,18 @@ const userSchema = new mongoose.Schema({
   },
   role: { 
     type: String, 
-    enum: ["customer", "chef", "admin", "delivery"], 
+    enum: ["customer", "provider", "admin", "deliveryPartner"], 
     default: "customer" 
   },
   contact: { 
     type: String, 
     required: true, 
     trim: true 
+  },
+  status: { 
+    type: String, 
+    enum: ["active", "pending", "Blocked"], 
+    default: "active" 
   },
 }, { timestamps: true }); // adds createdAt & updatedAt automatically
 
